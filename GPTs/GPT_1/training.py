@@ -3,7 +3,7 @@ from training_validation import calc_loss_loader, model, device, tokeniser, trai
 from gpt_1 import text_to_token, token_to_text, generate_text
 # \
 
-path = 'python//EPQ_projects//GPTs//GPT_1//save.pth'
+path = 'GPTs//GPT_1//save.pth'
 
 def save(model, optimiser, path):
     torch.save({

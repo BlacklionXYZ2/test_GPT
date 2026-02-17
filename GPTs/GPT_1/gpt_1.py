@@ -1,5 +1,4 @@
-import torch, torch.nn as nn, sys
-sys.path.append('C:\\Users\\Oscar\\Desktop\\Oscars shit\\files\\code\\python\\EPQ_projects')
+import torch, torch.nn as nn
 
 gpt_config = {
     'vocab_size': 50257,
@@ -11,7 +10,7 @@ gpt_config = {
     'qkv_bias': False
 }
 
-path = 'python//EPQ_projects//GPTs//GPT_1//save.pth'
+path = 'GPTs//GPT_1//save.pth'
 def load(model, optimiser, path):
     checkpoint = torch.load(path, map_location = 'cpu')
     model.load_state_dict(checkpoint['model_state'])

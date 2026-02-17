@@ -3,7 +3,7 @@ import tiktoken, torch, torch.nn as nn
 tokeniser = tiktoken.get_encoding('gpt2')
 
 file = 'harry_potter.txt'
-with open(f'python//EPQ_projects//text//{file}', 'r', encoding = 'utf-8') as f:
+with open(f'text//{file}', 'r', encoding = 'utf-8') as f:
     text = f.read()
 
 total_chars = len(text)
