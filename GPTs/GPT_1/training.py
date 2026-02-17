@@ -72,8 +72,8 @@ def train_model(model, train_loader, valid_loader, optimiser, device, num_epochs
 #test code
 #torch.manual_seed(123)
 optimiser = torch.optim.AdamW(model.parameters(), lr = 0.0004, weight_decay = 0.1)
-num_epochs = 3
-load(model, optimiser, path)
+num_epochs = 1
+#load(model, optimiser, path)
 train_losses, valid_losses, tokens_seen = train_model(
     model = model, train_loader = training_loader, 
     valid_loader = validation_loader, optimiser = optimiser, device = device, 

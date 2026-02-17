@@ -166,7 +166,7 @@ torch.manual_seed(123)
 model = test_GPT(gpt_config)
 
 optimiser = torch.optim.AdamW(model.parameters(), lr = 0.0004, weight_decay = 0.1)
-load(model, optimiser, path)
+#load(model, optimiser, path)
 
 model.eval()
 device = ('cuda' if torch.cuda.is_available() else 'cpu')
