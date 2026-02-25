@@ -252,7 +252,7 @@ def generate_text(model, idx, max_new_tokens, context_size, temp = 0.0, top_k = 
             break
 
         idx = torch.cat((idx, idx_next), dim = -1)
-        return idx
+    return idx
     
 
 # tokens = generate(model = model, idx = text_to_token('Every effort moves you', tokeniser), 
