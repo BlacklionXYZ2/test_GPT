@@ -161,7 +161,7 @@ def token_to_text(tokens, tokeniser):
 #code dependencies  
 import tiktoken
 tokeniser = tiktoken.get_encoding('gpt2')
-torch.manual_seed(123)
+#torch.manual_seed(123)
 
 model = test_GPT(gpt_config)
 
