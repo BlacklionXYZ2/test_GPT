@@ -169,3 +169,19 @@ model.eval()
 device = ('cuda' if torch.cuda.is_available() else 'cpu')
 
 model.to(device)
+
+
+# tokens = generate_text(model = model, idx = text_to_token('Every effort moves you', tokeniser), 
+#                   max_new_tokens = 25, context_size = gpt_config['context_length'], 
+#                   top_k = 50, temp = 1.4)
+# print(token_to_text(tokens, tokeniser))
+
+# start = True
+# text = 'hello world'
+# while start:
+#     response = input()
+#     text += response
+#     text += token_to_text(generate(model = model, idx = text_to_token(text, tokeniser), 
+#                   max_new_tokens = 25, context_size = gpt_config['context_length'], 
+#                   top_k = 50, temp = 1.4), tokeniser)
+#     print(text)
