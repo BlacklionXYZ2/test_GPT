@@ -161,12 +161,11 @@ def token_to_text(tokens, tokeniser):
 #code dependencies  
 import tiktoken
 tokeniser = tiktoken.get_encoding('gpt2')
-torch.manual_seed(123)
 
 model = test_GPT(gpt_config)
-
 optimiser = torch.optim.AdamW(model.parameters(), lr = 0.0004, weight_decay = 0.1)
-#load(model, optimiser, path)
+
+load(model, optimiser, path)
 
 model.eval()
 device = ('cuda' if torch.cuda.is_available() else 'cpu')
@@ -255,7 +254,7 @@ def generate_text(model, idx, max_new_tokens, context_size, temp = 0.0, top_k = 
     return idx
     
 
-# tokens = generate(model = model, idx = text_to_token('Every effort moves you', tokeniser), 
+# tokens = generate_text(model = model, idx = text_to_token('Every effort moves you', tokeniser), 
 #                   max_new_tokens = 25, context_size = gpt_config['context_length'], 
 #                   top_k = 50, temp = 1.4)
 # print(token_to_text(tokens, tokeniser))

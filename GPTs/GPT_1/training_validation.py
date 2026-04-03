@@ -2,7 +2,7 @@ import tiktoken, torch, torch.nn as nn
 
 tokeniser = tiktoken.get_encoding('gpt2')
 
-file = 'master.txt'
+file = 'input.txt'
 with open(f'text//{file}', 'r', encoding = 'utf-8') as f:
     text = f.read()
 
