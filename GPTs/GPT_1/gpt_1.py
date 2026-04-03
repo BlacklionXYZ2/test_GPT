@@ -162,6 +162,8 @@ def token_to_text(tokens, tokeniser):
 import tiktoken
 tokeniser = tiktoken.get_encoding('gpt2')
 
+#torch.manual_seed(123)
+
 model = test_GPT(gpt_config)
 optimiser = torch.optim.AdamW(model.parameters(), lr = 0.0004, weight_decay = 0.1)
 
