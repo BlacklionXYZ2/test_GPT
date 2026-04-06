@@ -10,7 +10,7 @@ gpt_config = {
     'qkv_bias': False
 }
 
-path = 'GPTs//GPT_1//save.pth'
+path = 'C://Users//ldurs//Documents//GitHub//test_GPT//GPTs//GPT_1//save.pth'
 def load(model, optimiser, path):
     checkpoint = torch.load(path, map_location = 'cpu')
     model.load_state_dict(checkpoint['model_state'])
@@ -50,7 +50,7 @@ class multiHeadAttention(nn.Module):
         attn_scores = queries @ keys.transpose(2, 3)
         mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
 
-        attn_scores.masked_fill(mask_bool, -torch.inf)
+        attn_scores = attn_scores.masked_fill(mask_bool, -torch.inf)
 
         attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim = -1)
         attn_weights = self.dropout(attn_weights)
@@ -125,7 +125,7 @@ class test_layer_norm(nn.Module):
     def forward(self, x):
         mean = x.mean(dim = -1, keepdim = True)
         variance = x.var(dim = -1, keepdim = True, unbiased = False)
-        norm_x = (x - mean) / torch.sqrt(variance)
+        norm_x = (x - mean) / torch.sqrt(variance + self.eps)
         return self.scale * norm_x + self.shift
     
 class GELU(nn.Module):
@@ -230,11 +230,12 @@ model.to(device)
 #text test 3
 # from GPTs.GPT_2.text_gen_2 import generate
 def generate_text(model, idx, max_new_tokens, context_size, temp = 0.0, top_k = None, eos_id = None):
+    idx = idx.to(device)
     for _ in range(max_new_tokens):
-        idx_cond = idx[:, -context_size:]
+        idx_cond = idx[:, -context_size:].to(device)
         with torch.no_grad():
             logits = model(idx_cond)
-        logits = logits[:, -1, :]
+        logits = logits[:, -1, :].to(device)
         
         if top_k is not None:
             top_logits, _ = torch.topk(logits, top_k)
@@ -256,17 +257,19 @@ def generate_text(model, idx, max_new_tokens, context_size, temp = 0.0, top_k = 
     return idx
     
 
-# tokens = generate_text(model = model, idx = text_to_token('Every effort moves you', tokeniser), 
-#                   max_new_tokens = 25, context_size = gpt_config['context_length'], 
+# tokens = generate_text(model = model, idx = text_to_token('Every effort moves you', tokeniser),
+#                   max_new_tokens = 25, context_size = gpt_config['context_length'],
 #                   top_k = 50, temp = 1.4)
 # print(token_to_text(tokens, tokeniser))
 
 # start = True
-# text = 'hello world'
+# context = 'hello world '
 # while start:
 #     response = input()
-#     text += response
-#     text += token_to_text(generate(model = model, idx = text_to_token(text, tokeniser), 
-#                   max_new_tokens = 25, context_size = gpt_config['context_length'], 
-#                   top_k = 50, temp = 1.4), tokeniser)
+#     context += response + ' '
+#     context += token_to_text(generate_text(model = model, idx = text_to_token(context, tokeniser),
+#                   max_new_tokens = 25, context_size = gpt_config['context_length'],
+#                   top_k = 50, temp = 1.4), tokeniser) + ' '
+#     text = ' '.join(context.split()[-25:])
+#     print(len(text.split()[-25:]))
 #     print(text)

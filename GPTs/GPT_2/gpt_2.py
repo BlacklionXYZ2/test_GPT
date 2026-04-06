@@ -18,7 +18,7 @@ def load(model, optimiser, path):
     optimiser.load_state_dict(checkpoint['optimiser_state'])
 
 class multiHeadAttention(nn.Module):
-    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias = False):
         super().__init__()
         assert (d_out % num_heads == 0), 'd_out must be divisible by num_heads'
         
@@ -28,7 +28,7 @@ class multiHeadAttention(nn.Module):
         
         # OPTIMIZATION 1: Fused QKV projection. 
         # One large matrix multiplication is much faster on a GPU than three smaller ones.
-        self.c_attn = nn.Linear(d_in, 3 * d_out, bias=qkv_bias)
+        self.c_attn = nn.Linear(d_in, 3 * d_out, bias = qkv_bias)
         self.out_proj = nn.Linear(d_out, d_out)
         
         self.dropout_p = dropout
@@ -39,7 +39,7 @@ class multiHeadAttention(nn.Module):
 
         # Calculate Q, K, V in a single pass, then split them
         qkv = self.c_attn(x)
-        q, k, v = qkv.split(self.d_out, dim=2)
+        q, k, v = qkv.split(self.d_out, dim = 2)
 
         # Reshape for multi-head attention: (Batch, Heads, Sequence_Length, Head_Dim)
         k = k.view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
@@ -51,9 +51,9 @@ class multiHeadAttention(nn.Module):
         # `is_causal=True` applies the triangle mask natively without consuming NxN memory.
         y = F.scaled_dot_product_attention(
             q, k, v, 
-            attn_mask=None, 
-            dropout_p=self.dropout_p if self.training else 0.0, 
-            is_causal=True
+            attn_mask = None, 
+            dropout_p = self.dropout_p if self.training else 0.0, 
+            is_causal = True
         )
 
         # Re-assemble all head outputs side by side
@@ -80,12 +80,12 @@ class transformer_block(nn.Module):
         # OPTIMIZATION 4: PyTorch native LayerNorm (Highly optimized C++ kernel)
         self.norm1 = nn.LayerNorm(config['embed_dim'])
         self.att = multiHeadAttention(
-            d_in=config['embed_dim'],
-            d_out=config['embed_dim'],
-            context_length=config['context_length'],
-            num_heads=config['n_heads'],
-            dropout=config['drop_rate'],
-            qkv_bias=config['qkv_bias']
+            d_in = config['embed_dim'],
+            d_out = config['embed_dim'],
+            context_length = config['context_length'],
+            num_heads = config['n_heads'],
+            dropout = config['drop_rate'],
+            qkv_bias = config['qkv_bias']
         )
         self.norm2 = nn.LayerNorm(config['embed_dim'])
         self.ff = feed_forward(config)
@@ -106,16 +106,17 @@ class test_GPT(nn.Module):
         self.drop_embeds = nn.Dropout(config['drop_rate'])
         self.trf_blocks = nn.Sequential(*[transformer_block(config) for _ in range(config['n_layers'])])
         self.final_norm = nn.LayerNorm(config['embed_dim'])
-        self.out_head = nn.Linear(config['embed_dim'], config['vocab_size'], bias=False)
+        self.out_head = nn.Linear(config['embed_dim'], config['vocab_size'], bias = False)
 
     def forward(self, in_idx):
+        in_idx = in_idx.to(device)
         batch_size, sequence_len = in_idx.shape
         
         # Safety check
         assert sequence_len <= self.config['context_length'], "Sequence length exceeds context length"
         
         token_embeds = self.token_embed(in_idx)
-        pos_embeds = self.pos_embed(torch.arange(sequence_len, device=in_idx.device))
+        pos_embeds = self.pos_embed(torch.arange(sequence_len, device = in_idx.device))
         
         x = self.drop_embeds(token_embeds + pos_embeds)
         x = self.trf_blocks(x)
@@ -124,7 +125,7 @@ class test_GPT(nn.Module):
         return logits
 
 def text_to_token(text, tokeniser):
-    encoded = tokeniser.encode(text, allowed_special={'<|endoftext|>'})
+    encoded = tokeniser.encode(text, allowed_special = {'<|endoftext|>'})
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
     return encoded_tensor
 
@@ -132,7 +133,8 @@ def token_to_text(tokens, tokeniser):
     flat = tokens.squeeze(0)
     return tokeniser.decode(flat.tolist())
 
-def generate_text(model, idx, max_new_tokens, context_size, temp=0.0, top_k=None, eos_id=None):
+def generate_text(model, idx, max_new_tokens, context_size, temp = 0.0, top_k = None, eos_id = None):
+    idx = idx.to(device)
     for _ in range(max_new_tokens):
         idx_cond = idx[:, -context_size:]
         with torch.no_grad():
@@ -146,42 +148,42 @@ def generate_text(model, idx, max_new_tokens, context_size, temp=0.0, top_k=None
 
         if temp > 0.0:
             logits = logits / temp
-            probs = torch.softmax(logits, dim=-1)
-            idx_next = torch.multinomial(probs, num_samples=1)
+            probs = torch.softmax(logits, dim = -1)
+            idx_next = torch.multinomial(probs, num_samples = 1)
         else:
-            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
+            idx_next = torch.argmax(logits, dim = -1, keepdim = True)
 
         if eos_id is not None and (idx_next == eos_id).all():
             break
 
-        idx = torch.cat((idx, idx_next), dim=-1)
+        idx = torch.cat((idx, idx_next), dim = -1)
         
     return idx
 
 #dependencies
 import tiktoken
 tokeniser = tiktoken.get_encoding('gpt2')
+device = ('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = test_GPT(gpt_config)
 #load(model, optimiser, path)
-
 model.eval()
-device = ('cuda' if torch.cuda.is_available() else 'cpu')
-
 model.to(device)
 
 
-# tokens = generate_text(model = model, idx = text_to_token('Every effort moves you', tokeniser), 
-#                   max_new_tokens = 25, context_size = gpt_config['context_length'], 
+# tokens = generate_text(model = model, idx = text_to_token('Every effort moves you', tokeniser),
+#                   max_new_tokens = 25, context_size = gpt_config['context_length'],
 #                   top_k = 50, temp = 1.4)
 # print(token_to_text(tokens, tokeniser))
 
 # start = True
-# text = 'hello world'
+# context = 'hello world '
 # while start:
 #     response = input()
-#     text += response
-#     text += token_to_text(generate(model = model, idx = text_to_token(text, tokeniser), 
-#                   max_new_tokens = 25, context_size = gpt_config['context_length'], 
-#                   top_k = 50, temp = 1.4), tokeniser)
+#     context += response + ' '
+#     context += token_to_text(generate_text(model = model, idx = text_to_token(context, tokeniser),
+#                   max_new_tokens = 25, context_size = gpt_config['context_length'],
+#                   top_k = 50, temp = 1.4), tokeniser) + ' '
+#     text = ' '.join(context.split()[-25:])
+#     print(len(text.split()[-25:]))
 #     print(text)
