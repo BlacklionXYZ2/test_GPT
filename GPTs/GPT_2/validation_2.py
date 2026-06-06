@@ -22,10 +22,6 @@ validation_data = text[split_idx:]
 
 class MemoryEfficientGPTDataset(Dataset):
     def __init__(self, txt, tokeniser, maxLength, stride):
-        # OPTIMIZATION 1: 1D Tensor Storage
-        # Instead of appending thousands of overlapping chunked tensors into a Python list 
-        # (which destroys System RAM), we store the entire text as ONE single 1D tensor 
-        # and slice it dynamically on the fly.
         self.token_ids = torch.tensor(tokeniser.encode(txt), dtype=torch.long)
         self.maxLength = maxLength
         self.stride = stride
@@ -50,15 +46,10 @@ def createDataLoader(txt, batchSize=4, maxLength=256, stride=128, shuffle=True, 
         shuffle=shuffle, 
         drop_last=dropLast, 
         num_workers=numWorkers,
-        pin_memory=True # OPTIMIZATION 2: Pin Memory
-        # This locks the data in a special area of your System RAM so it can be 
-        # transferred across the PCIe bus to your GPU VRAM significantly faster.
+        pin_memory=True
     )
     return dataloader
 
-# OPTIMIZATION 3: Cranking up the Batch Size and Workers
-# Because we are saving so much VRAM now, we can feed 16 or 32 sequences at once.
-# We also use numWorkers=2 so the CPU pre-fetches the next batch while the GPU does math.
 training_loader = createDataLoader(
     training_data, 
     batchSize=16, 
@@ -80,8 +71,6 @@ validation_loader = createDataLoader(
 )
 
 def batch_calc_loss(input_batch, target_batch, model, device):
-    # OPTIMIZATION 4: Non-Blocking Transfers
-    # This allows the data transfer to overlap with GPU computation, saving precious milliseconds.
     input_batch = input_batch.to(device, non_blocking=True)
     target_batch = target_batch.to(device, non_blocking=True)
     
