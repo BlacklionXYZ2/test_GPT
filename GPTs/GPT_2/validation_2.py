@@ -1,44 +1,42 @@
-import tiktoken
-import torch
-import torch.nn as nn
+import tiktoken, torch, torch.nn as nn, torch.nn.functional as F, numpy as np
 from torch.utils.data import Dataset, DataLoader
 from gpt_2 import gpt_config, model, tokeniser
 
-file = 'input.txt'
+file_path = 'train_data.bin'
+
 try:
-    with open(f'text//{file}', 'r', encoding='utf-8') as f:
-        text = f.read()
+    full_data = np.memmap(file_path, dtype=np.uint16, mode='r')
 except FileNotFoundError:
-    print(f"Warning: text//{file} not found. Ensure the path is correct.")
-    text = "Fallback text for testing. " * 1000
+    print(f"Error: {file_path} not found. Have you run the tokenizer script?")
+    exit()
 
-total_chars = len(text)
-total_tokens = len(tokeniser.encode(text))
+val_tokens = 5_000_000 
+split_idx = len(full_data) - val_tokens
 
-train_ratio = 0.9
-split_idx = int(train_ratio * len(text))
-training_data = text[:split_idx]
-validation_data = text[split_idx:]
+training_data = full_data[:split_idx]
+validation_data = full_data[split_idx:]
 
-class MemoryEfficientGPTDataset(Dataset):
-    def __init__(self, txt, tokeniser, maxLength, stride):
-        self.token_ids = torch.tensor(tokeniser.encode(txt), dtype=torch.long)
+class MemmapGPTDataset(Dataset):
+    def __init__(self, data_view, maxLength, stride):
+        self.data_view = data_view
         self.maxLength = maxLength
         self.stride = stride
 
     def __len__(self):
-        return (len(self.token_ids) - self.maxLength) // self.stride
+        return (len(self.data_view) - self.maxLength) // self.stride
     
     def __getitem__(self, idx):
-        # Dynamically slice the 1D tensor when the DataLoader requests it
         start_idx = idx * self.stride
-        inputChunk = self.token_ids[start_idx : start_idx + self.maxLength]
-        targetChunk = self.token_ids[start_idx + 1 : start_idx + self.maxLength + 1]
+        
+        chunk = self.data_view[start_idx : start_idx + self.maxLength + 1]
+        
+        inputChunk = torch.from_numpy(chunk[:-1].astype(np.int64))
+        targetChunk = torch.from_numpy(chunk[1:].astype(np.int64))
+        
         return inputChunk, targetChunk
 
-def createDataLoader(txt, batchSize=4, maxLength=256, stride=128, shuffle=True, dropLast=True, numWorkers=0):
-    tokeniser = tiktoken.get_encoding('gpt2')
-    dataset = MemoryEfficientGPTDataset(txt, tokeniser, maxLength, stride)
+def createDataLoader(data_view, batchSize=4, maxLength=256, stride=128, shuffle=True, dropLast=True, numWorkers=0):
+    dataset = MemmapGPTDataset(data_view, maxLength, stride)
     
     dataloader = DataLoader(
         dataset, 
@@ -57,7 +55,7 @@ training_loader = createDataLoader(
     stride=gpt_config['context_length'], 
     dropLast=True, 
     shuffle=True, 
-    numWorkers=2 
+    numWorkers=4  # Increased to 4 to handle background disk reads
 )
 
 validation_loader = createDataLoader(
@@ -66,8 +64,8 @@ validation_loader = createDataLoader(
     maxLength=gpt_config['context_length'], 
     stride=gpt_config['context_length'], 
     dropLast=True, 
-    shuffle=False, # Validation data doesn't need to be shuffled
-    numWorkers=2
+    shuffle=False, 
+    numWorkers=4
 )
 
 def batch_calc_loss(input_batch, target_batch, model, device):
@@ -75,7 +73,8 @@ def batch_calc_loss(input_batch, target_batch, model, device):
     target_batch = target_batch.to(device, non_blocking=True)
     
     logits = model(input_batch)
-    loss = nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
+    loss = F.cross_entropy(logits.view(-1, logits.size(-1)), target_batch.view(-1))
+    
     return loss
 
 def calc_loss_loader(data_loader, model, device, num_batches=None):
